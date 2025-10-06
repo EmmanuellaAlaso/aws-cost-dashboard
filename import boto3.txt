@@ -1,0 +1,36 @@
+import boto3
+import pandas as pd
+from datetime import date, timedelta
+
+# Create Cost Explorer client
+client = boto3.client('ce')
+
+# Define date range (last 7 days)
+end = date.today()
+start = end - timedelta(days=7)
+
+# Fetch cost and usage data
+response = client.get_cost_and_usage(
+    TimePeriod={
+        'Start': start.strftime('%Y-%m-%d'),
+        'End': end.strftime('%Y-%m-%d')
+    },
+    Granularity='DAILY',
+    Metrics=['UnblendedCost'],
+    GroupBy=[
+        {'Type': 'DIMENSION', 'Key': 'SERVICE'}
+    ]
+)
+
+# Convert results to DataFrame
+rows = []
+for result in response['ResultsByTime']:
+    for group in result['Groups']:
+        rows.append({
+            'Date': result['TimePeriod']['Start'],
+            'Service': group['Keys'][0],
+            'Cost ($)': float(group['Metrics']['UnblendedCost']['Amount'])
+        })
+
+df = pd.DataFrame(rows)
+print(df)
